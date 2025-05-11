@@ -1,0 +1,6 @@
+name: BrickGame
+author: OpenAI
+version: 1.0.0
+type: app
+entry: brick_game.c
+description: A simple breakout-style game for Flipper Zero
