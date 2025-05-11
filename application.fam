@@ -1,0 +1,7 @@
+name: StarWarsMelody
+app_id: starwars_music
+version: 1.0.0
+author: koolnino
+type: app
+entry: melody_player.c
+description: Star Wars theme using Flipper Zero buzzer
