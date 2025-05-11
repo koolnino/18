@@ -30,4 +30,6 @@ typedef struct {
     int score;
     bool game_over;
     bool victory;
+    Gui* gui;
+    ViewPort* view_port;
 } AppState;

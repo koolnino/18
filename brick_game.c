@@ -1,23 +1,22 @@
 #include "brick_game.h"
 
-static void draw(Canvas* canvas, void* ctx) {
+static void draw_callback(Canvas* canvas, void* ctx) {
     AppState* state = ctx;
-
     canvas_clear(canvas);
 
     if(state->game_over) {
         canvas_draw_str(canvas, 30, 30, "GAME OVER");
-        char final_score[20];
-        snprintf(final_score, sizeof(final_score), "Score: %d", state->score);
-        canvas_draw_str(canvas, 30, 45, final_score);
+        char score[20];
+        snprintf(score, sizeof(score), "Score: %d", state->score);
+        canvas_draw_str(canvas, 30, 45, score);
         return;
     }
 
     if(state->victory) {
         canvas_draw_str(canvas, 30, 30, "YOU WIN!");
-        char final_score[20];
-        snprintf(final_score, sizeof(final_score), "Score: %d", state->score);
-        canvas_draw_str(canvas, 30, 45, final_score);
+        char score[20];
+        snprintf(score, sizeof(score), "Score: %d", state->score);
+        canvas_draw_str(canvas, 30, 45, score);
         return;
     }
 
@@ -49,15 +48,12 @@ static void input_callback(InputEvent* event, void* ctx) {
 }
 
 static void play_sound(bool destroy) {
-    if(destroy) {
-        furi_hal_pwm_start(2000, 50);
-        furi_delay_ms(100);
-        furi_hal_pwm_stop();
-    } else {
-        furi_hal_pwm_start(1000, 30);
-        furi_delay_ms(30);
-        furi_hal_pwm_stop();
-    }
+    uint32_t freq = destroy ? 2000 : 1000;
+    uint8_t duty = destroy ? 50 : 30;
+    uint32_t duration = destroy ? 100 : 30;
+    furi_hal_pwm_start(freq, duty);
+    furi_delay_ms(duration);
+    furi_hal_pwm_stop();
 }
 
 static bool all_bricks_destroyed(AppState* state) {
@@ -75,7 +71,7 @@ int32_t brick_game_app(void* p) {
         .ball = {.x = 60, .y = 30, .vx = 1, .vy = -1},
         .score = 0,
         .game_over = false,
-        .victory = false
+        .victory = false,
     };
 
     for(int i = 0; i < MAX_BRICKS; ++i) {
@@ -84,19 +80,13 @@ int32_t brick_game_app(void* p) {
         state.bricks[i].destroyed = false;
     }
 
-    Gui* gui = furi_record_open("gui");
-    ViewPort* view_port = view_port_alloc();
-    view_port_draw_callback_set(view_port, draw, &state);
-    view_port_input_callback_set(view_port, input_callback, &state);
-    gui_add_view_port(gui, view_port, GuiLayerFullscreen);
+    state.gui = furi_record_open("gui");
+    state.view_port = view_port_alloc();
+    view_port_draw_callback_set(state.view_port, draw_callback, &state);
+    view_port_input_callback_set(state.view_port, input_callback, &state);
+    gui_add_view_port(state.gui, state.view_port, GuiLayerFullscreen);
 
-    while(1) {
-        if(state.game_over || state.victory) {
-            view_port_update(view_port);
-            furi_delay_ms(100);
-            continue;
-        }
-
+    while(!state.game_over && !state.victory) {
         state.ball.x += state.ball.vx;
         state.ball.y += state.ball.vy;
 
@@ -137,12 +127,15 @@ int32_t brick_game_app(void* p) {
             state.game_over = true;
         }
 
-        view_port_update(view_port);
+        view_port_update(state.view_port);
         furi_delay_ms(50);
     }
 
-    gui_remove_view_port(gui, view_port);
-    view_port_free(view_port);
+    view_port_update(state.view_port);
+    furi_delay_ms(1500);
+
+    gui_remove_view_port(state.gui, state.view_port);
+    view_port_free(state.view_port);
     furi_record_close("gui");
 
     return 0;
